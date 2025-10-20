@@ -1,4 +1,5 @@
 // server/db-test.js
+require('dotenv').config(); // <-- ¡ESTA ES LA LÍNEA QUE FALTABA!
 const { Pool } = require('pg');
 
 // Usa la variable de entorno que definiste en .env
