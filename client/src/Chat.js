@@ -6,11 +6,20 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { token } = useAuth();
+  
+  // Obtenemos los datos de autenticación directamente aquí
+  const { user, token } = useAuth();
 
   const handleSendMessage = async (event) => {
     event.preventDefault();
     if (!inputText.trim() || isLoading) return;
+
+    // Verificamos el usuario justo antes de enviar
+    if (!user || !user.id) {
+      alert("Parece que no has iniciado sesión. Recarga la página e intenta loguearte de nuevo.");
+      console.error("ERROR DE CHAT: El objeto 'user' es:", user); // Línea para depurar
+      return;
+    }
 
     const userMessage = { role: 'user', content: inputText };
     const newMessages = [...messages, userMessage];
@@ -19,43 +28,40 @@ const Chat = () => {
     setIsLoading(true);
 
     try {
+      const payload = { 
+        messages: newMessages, 
+        userName: user.name, 
+        userId: user.id 
+      };
+
       const response = await fetch('http://localhost:3001/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        const assistantMessage = { role: 'assistant', content: data.reply };
-        
-        // CAMBIO CLAVE: Limpiamos el historial si la IA modificó algo
-        if (data.reply.toLowerCase().includes('cambiada') || data.reply.toLowerCase().includes('creada') || data.reply.toLowerCase().includes('borrada')) {
-          console.log("Modificación detectada, limpiando historial del chat.");
-          setMessages([assistantMessage]); // Reiniciamos el chat para que la próxima llamada a la base de datos traiga los datos frescos.
-        } else {
-          setMessages(prev => [...prev, assistantMessage]);
-        }
+        const assistantMessages = data.messages_to_display || [];
+        const visibleMessages = assistantMessages.filter(msg => !msg.content.startsWith('🔧'));
+        setMessages(prev => [...prev, ...visibleMessages]);
       } else {
-        console.error('Error del backend:', data.error);
         setMessages(prev => [...prev, { role: 'assistant', content: 'Lo siento, ha ocurrido un error. ¿Puedes intentarlo de nuevo?' }]);
       }
     } catch (error) {
-      console.error('Error de red:', error);
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error de conexión. Revisa tu red.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ... (el resto del código del componente `return` sigue igual)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '80vh', width: '400px', border: '1px solid #ccc', borderRadius: '8px', margin: '20px auto' }}>
-      <div style={{ flex: 1, padding: '10px', overflowY: 'auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '300px', maxWidth: '600px', margin: 'auto' }}>
+      <div style={{ flex: 1, padding: '10px', overflowY: 'auto', border: '1px solid #444', borderRadius: '8px', background: '#282c34' }}>
         {messages.map((msg, index) => (
           <div key={index} style={{ marginBottom: '10px', display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
             <span style={{ backgroundColor: msg.role === 'user' ? '#007bff' : '#f1f1f1', color: msg.role === 'user' ? 'white' : 'black', padding: '8px 12px', borderRadius: '12px' }}>
@@ -65,7 +71,7 @@ const Chat = () => {
         ))}
         {isLoading && <div style={{ display: 'flex', justifyContent: 'flex-start' }}><span style={{ backgroundColor: '#f1f1f1', padding: '8px 12px', borderRadius: '12px' }}>Escribiendo...</span></div>}
       </div>
-      <form onSubmit={handleSendMessage} style={{ display: 'flex', padding: '10px', borderTop: '1px solid #ccc' }}>
+      <form onSubmit={handleSendMessage} style={{ display: 'flex', marginTop: '10px' }}>
         <input
           type="text"
           value={inputText}

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
+import { useAuth } from './context/AuthContext';
 
-function Login({ onLogin, onGoToRegister, error }) {
+function Login({ onGoToRegister, error }) {
+  // --- LOS HOOKS VIVEN AQUÍ, EN LA "PLANTA PRINCIPAL" ---
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { login } = useAuth(); // <-- ¡CORRECTO! El hook se llama aquí.
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(email, password);
+    // Ahora solo usamos la función 'login' que ya guardamos.
+    login(email, password);
   };
 
   return (
